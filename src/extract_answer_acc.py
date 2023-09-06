@@ -236,7 +236,42 @@ def is_equal(asw:str, gt_asw:str) -> bool:
             return False
 
 
-def compute_accuracy_ceval(in_file, out_path):
+def compute_accuracy_ape_gpt(in_file, out_path):
+    with open(in_file, "r", encoding="utf-8") as f:
+        datas = [json.loads(line) for line in f]
+
+    correct_ans = []
+    wrong_ans = []
+    no_ans = []
+    for data in datas:
+        try:
+            model_solution = data["completion"]
+            model_ans = find_math_answer(model_solution)
+            gt_ans = data["extra"]["answer"]
+            data["model_answer"] = model_ans
+            data["gt_answer"] = gt_ans
+            if is_equal(model_ans, gt_ans):
+                correct_ans.append(data)
+            else:
+                wrong_ans.append(data)
+        except:
+            no_ans.append(data)
+
+    with open(os.path.join(out_path, "correct.jsonl"), "w") as f:
+        for data in correct_ans:
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
+    with open(os.path.join(out_path, "wrong.jsonl"), "w") as f:
+        for data in wrong_ans:
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
+    with open(os.path.join(out_path, "none.jsonl"), "w") as f:
+        for data in no_ans:
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
+    print(f"correct_num: {len(correct_ans)}")
+    print(f"wrong_num: {len(wrong_ans)}")
+    print(f"none_num: {len(no_ans)}")
+    print(f"acc: {100 * len(correct_ans) / len(datas)}")
+
+def compute_accuracy_ape_Llama(in_file, out_path):
     with open(in_file, "r", encoding="utf-8") as f:
         datas = [json.loads(line) for line in f]
 
@@ -276,3 +311,4 @@ if __name__ == "__main__":
     # compute_accuracy("/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_test_result.jsonl", "/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_results", "/mnt/cache/luzimu/gsm8k-rft-llama7b-u13b_evaluation/MATH_test_orig.jsonl")
     compute_accuracy_ceval("/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/sensecode/sensecode.jsonl",
                            "/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/sensecode")
+

@@ -25,10 +25,11 @@ def orig_to_processed(in_file, out_file):
         new_datas.append(new_data)
 
     save_jsonl(new_datas, out_file)
+    print(f"data_num: {len(new_datas)}")
 
 if __name__ == "__main__":
 
-    orig_to_processed("/mnt/cache/luzimu/datasets_ch/ape210k/data/test.ape.json", "/mnt/cache/luzimu/datasets_ch/ape210k/processed/test.jsonl")
-    orig_to_processed("/mnt/cache/luzimu/datasets_ch/ape210k/data/train.ape.json", "/mnt/cache/luzimu/datasets_ch/ape210k/processed/train.jsonl")
-    orig_to_processed("/mnt/cache/luzimu/datasets_ch/ape210k/data/valid.ape.json", "/mnt/cache/luzimu/datasets_ch/ape210k/processed/valid.jsonl")
+    orig_to_processed("/mnt/cache/luzimu/datasets_ch/ape210k/data/test.ape.json", "/mnt/cache/luzimu/datasets_ch/ape210k/outs/processed/test.jsonl")
+    orig_to_processed("/mnt/cache/luzimu/datasets_ch/ape210k/data/train.ape.json", "/mnt/cache/luzimu/datasets_ch/ape210k/outs/processed/train.jsonl")
+    orig_to_processed("/mnt/cache/luzimu/datasets_ch/ape210k/data/valid.ape.json", "/mnt/cache/luzimu/datasets_ch/ape210k/outs/processed/valid.jsonl")
 
