@@ -245,7 +245,7 @@ def compute_accuracy_ceval(in_file, out_path):
     no_ans = []
     for data in datas:
         try:
-            model_solution = data["all_answers"][0]
+            model_solution = data["completion"]
             model_ans = find_math_answer(model_solution)
             gt_ans = data["extra"]["answer"]
             data["model_answer"] = model_ans
@@ -274,5 +274,5 @@ def compute_accuracy_ceval(in_file, out_path):
 
 if __name__ == "__main__":
     # compute_accuracy("/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_test_result.jsonl", "/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_results", "/mnt/cache/luzimu/gsm8k-rft-llama7b-u13b_evaluation/MATH_test_orig.jsonl")
-    compute_accuracy_ceval("/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/gpt_3_ape210k_test_result/out.jsonl",
-                           "/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/gpt_3_ape210k_test_result")
+    compute_accuracy_ceval("/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/sensecode/sensecode.jsonl",
+                           "/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/sensecode")
