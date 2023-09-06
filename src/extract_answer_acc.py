@@ -245,8 +245,18 @@ def compute_accuracy_ape_gpt(in_file, out_path):
     no_ans = []
     for data in datas:
         try:
-            model_solution = data["completion"]
-            model_ans = find_math_answer(model_solution)
+            solution = ""
+            contents = data["all_answers"][0]["contents"]
+            for e in contents[2:]:
+                content = e["message"]["content"]
+                type = content["content_type"]
+                if type == "text":
+                    solution += content["parts"][0]
+                elif type == "code":
+                    solution += "<|code|>" + content["text"] + "<|code|>"
+                elif type == "execution_output":
+                    solution += "<|execution|>" + content["text"] + "<|execution|>"
+            model_ans = find_math_answer(solution)
             gt_ans = data["extra"]["answer"]
             data["model_answer"] = model_ans
             data["gt_answer"] = gt_ans
@@ -309,6 +319,6 @@ def compute_accuracy_ape_Llama(in_file, out_path):
 
 if __name__ == "__main__":
     # compute_accuracy("/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_test_result.jsonl", "/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_results", "/mnt/cache/luzimu/gsm8k-rft-llama7b-u13b_evaluation/MATH_test_orig.jsonl")
-    compute_accuracy_ceval("/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/sensecode/sensecode.jsonl",
-                           "/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/sensecode")
+    compute_accuracy_ape_gpt("/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/gpt_APE500_test(0905-0945).jsonl_20230906102943/out-20230905-2147-gpt_APE500_test(0905-0945).jsonl",
+                           "/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/gpt_4_ape500_test_result")
 
