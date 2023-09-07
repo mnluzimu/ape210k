@@ -245,15 +245,22 @@ def compute_accuracy_ape_gpt(in_file, out_path):
     no_ans = []
     for data in datas:
         try:
-            model_solution = data["all_answers"][0]
-            skip_strings = ["<|endoftext|>", "<|system|>", "<|text|>", "<|endofblock|>", "<|endofmessage|>", "<|user|>"]
-            for skip_string in skip_strings:
-                model_solution = model_solution.replace(skip_string, "")
-            model_ans = find_math_answer(model_solution)
+            solution = ""
+            contents = data["all_answers"][0]["contents"]
+            for e in contents[2:]:
+                content = e["message"]["content"]
+                type = content["content_type"]
+                if type == "text":
+                    solution += content["parts"][0]
+                elif type == "code":
+                    solution += "<|code|>" + content["text"] + "<|code|>"
+                elif type == "execution_output":
+                    solution += "<|execution|>" + content["text"] + "<|execution|>"
+            model_ans = find_math_answer(solution)
             gt_ans = data["extra"]["answer"]
             data["model_answer"] = model_ans
             data["gt_answer"] = gt_ans
-            data["gt_solution"] = model_solution
+
             if is_equal(model_ans, gt_ans):
                 correct_ans.append(data)
             else:
@@ -317,6 +324,7 @@ def compute_accuracy_ape_Llama(in_file, out_path):
 
 if __name__ == "__main__":
     # compute_accuracy("/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_test_result.jsonl", "/mnt/cache/luzimu/code_generation-master/outs/Llama-2-7b-hf-math-2023-08-27-09:58/MATH_results", "/mnt/cache/luzimu/gsm8k-rft-llama7b-u13b_evaluation/MATH_test_orig.jsonl")
+
     # compute_accuracy_ceval_gpt("/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/gpt_3_ape210k_test_result/out.jsonl",
     #                        "/home/SENSETIME/luzimu/Documents/datasets_ch/ape210k/outs/results/gpt_3_ape210k_test_result")
     compute_accuracy_ape_Llama("/mnt/cache/luzimu/datasets_ch/ape210k/outs/results/sensecode_200.jsonl", "/mnt/cache/luzimu/datasets_ch/ape210k/outs/results/sensecode_1w_200")
