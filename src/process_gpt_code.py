@@ -96,5 +96,5 @@ def process_gpt_code_to_train(in_file, out_file):
     print(f"wrong_num: {len(wrong_datas)}")
     
 if __name__ == "__main__":
-    process_gpt_code_to_train("/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_code/train_out-0804-2314-mj-out-07250113-ape_input_202307191357_wrong.jsonl",
-                              "/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_code/wrong_to_correct.jsonl")
+    process_gpt_code_to_train("/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_code/out-0908-0041-luzimu.jsonl",
+                              "/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_code/out-0908-0041-luzimu.jsonl")
