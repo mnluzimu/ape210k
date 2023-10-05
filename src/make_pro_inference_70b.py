@@ -33,7 +33,6 @@ def save_jsonl(data: list, path: str, mode='w', add_timestamp=True, verbose=True
 
 
 def load_jsonl(path: str):
-    print(path)
     with open(path, "r", encoding='utf-8') as fh:
         return [json.loads(line) for line in fh.readlines() if line]
     
@@ -42,7 +41,7 @@ class JupyterNotebookKernel(object):
 
     lock = RLock()
 
-    def __init__(self, retries=10, delay=5):
+    def __init__(self, retries=5, delay=5):
         JupyterNotebookKernel.lock.acquire()
         for _ in range(retries):
             try:
@@ -131,7 +130,6 @@ class JupyterNotebookKernel(object):
         error_monitor_thread.start()
 
 
-
 class API:
 
     def __init__(self, port='8001', ip='10.119.29.124'):
@@ -176,6 +174,7 @@ def code_generation(query):
 
     jupyter = JupyterNotebookKernel()
     jupyter.start_monitoring()
+
 
     parameters=dict(
         do_sample=False,
@@ -243,92 +242,87 @@ if __name__ == '__main__':
     print(args.ch)
 
     ip = {
-        "0": "",
-        "1": "",
-        "2": "",
-        "3": "",
-        "4": "",
-        "5": "",
-        "6": "",
-        "7": "",
-        "8": "",
-        "9": "",
-        "10": "10.119.27.113",
-        "11": "10.119.27.197",
-        "12": "10.119.28.93",
-        "13": "10.119.28.201",
-        "14": "10.119.29.65",
-        "15": "10.119.29.146",
-        "16": "10.119.29.146",
-        "17": "10.119.19.26",
-        "18": "10.119.20.12",
-        "19": "10.119.21.48"
+        "100": "",
+        "200": "10.119.18.159",
+        "400": "10.119.26.31",
+        "600": "",
+        "800": "",
+        "1000": "",
+        "1200": "",
+        "1400": "",
+        "1600": "",
+        "1800": "",
+        "2000": ""
     }
     
     api = API(port="8001", ip=ip[args.ch])
+    dir = f"checkpoint-" + args.ch
 
-    input_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_to_be_run/{args.ch}.jsonl'
-    output_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/{args.ch}_result.jsonl'
+    # GSM8K200 APE500 gaokao-mathcloze gaokao-mathqa TAL500 CMMLU AGI
+    for name in ["APE500", "GSM8K200", "MATH500"]:
+    # for name in ["GSM8K"]:
+        input_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/create_new/infer_create_new.jsonl'
+        output_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/new_problems/{dir}/new_problems.jsonl'
 
-    # output_path = f'/mnt/cache/wangke/code_generation/outs/debug/{name}/{name}_test_result.jsonl'
-    if not os.path.exists("/".join(output_path.split("/")[:-1])):
-        os.makedirs("/".join(output_path.split("/")[:-1]))
-    
-    try:
-        all = load_jsonl(output_path)
-    except FileNotFoundError:
-        all = []
-
-    BEGIN = len(all)
-
-    OVER_WRITE = True
-    humaneval = load_jsonl(input_path)
-    END = len(humaneval)
-    outs = []
-
-
-    counter = BEGIN
-    while counter < END:
-        pool = Pool(8)
-        try:
-            results = pool.imap(process_full, humaneval[BEGIN:END])
-            for d in tqdm(results, total=len(humaneval[BEGIN:END])):
-                d['completion'] = d['debug_result'][-1]['content']
-                outs.append(d)
-                all.append(d)
-                counter += 1
-                if counter % 10 == 0 or counter == END:
-                    if counter <= 10 and OVER_WRITE:
-                        save_jsonl(outs, output_path,mode='w', add_timestamp=False, verbose=False)
-                    else:
-                        save_jsonl(outs, output_path,mode='a', add_timestamp=False, verbose=False)
-                    outs = []
-                    BEGIN = counter
-        except Exception as e:
-
-            print(f'<|{str(e)}|>')
-            pool.terminate()  # 立即终止所有子进程
-            print("[restarting]")
-            os.execl(sys.executable, sys.executable, *sys.argv)
-
-
-            pool.terminate()  # 立即终止所有子进程
-            continue  # 重新开始while循环
-        finally:
-            pool.close()  # 关闭pool，防止新的任务提交到pool
-            pool.join()   # 等待子进程结束
-
-    
-    print('Total: ', counter)
-
-    '''  
-
-    for d in tqdm(humaneval[10:20]):
-        d = process_full(d)
+        # output_path = f'/mnt/cache/wangke/code_generation/outs/debug/{name}/{name}_test_result.jsonl'
+        if not os.path.exists("/".join(output_path.split("/")[:-1])):
+            os.makedirs("/".join(output_path.split("/")[:-1]))
         
-    '''
+        try:
+            all = load_jsonl(output_path)
+        except FileNotFoundError:
+            all = []
+
+        BEGIN = len(all)
+
+        OVER_WRITE = True
+        humaneval = load_jsonl(input_path)
+        END = len(humaneval)
+        outs = []
+
+    
+        counter = BEGIN
+        while counter < END:
+            pool = Pool(16)
+            try:
+                results = pool.imap(process_full, humaneval[BEGIN:END])
+                for d in tqdm(results, total=len(humaneval[BEGIN:END])):
+                    d['completion'] = d['debug_result'][-1]['content']
+                    outs.append(d)
+                    all.append(d)
+                    counter += 1
+                    if counter % 10 == 0 or counter == END:
+                        if counter <= 10 and OVER_WRITE:
+                            save_jsonl(outs, output_path,mode='w', add_timestamp=False, verbose=False)
+                        else:
+                            save_jsonl(outs, output_path,mode='a', add_timestamp=False, verbose=False)
+                        outs = []
+                        BEGIN = counter
+            except Exception as e:
+                print(f'<|{str(e)}|>')
+                pool.terminate()  # 立即终止所有子进程
+                print(f"[restarting]")
+                os.execl(sys.executable, sys.executable, *sys.argv)
+                
+                
+                if str(e) == "Kernel didn't respond in 60 seconds" or str(e) == "Kernel died before replying to kernel_info": # restart the program
+                    os.execl(sys.executable, sys.executable, *sys.argv)
+                continue  # 重新开始while循环
+            finally:
+                pool.close()  # 关闭pool，防止新的任务提交到pool
+                pool.join()   # 等待子进程结束
+
+        
+        print('Total: ', counter)
+
+        '''  
+
+        for d in tqdm(humaneval[10:20]):
+            d = process_full(d)
+            
+        '''
 
 
-    save_jsonl(all, output_path, add_timestamp=True)
+        save_jsonl(all, output_path, add_timestamp=True)
 
 

@@ -33,7 +33,6 @@ def save_jsonl(data: list, path: str, mode='w', add_timestamp=True, verbose=True
 
 
 def load_jsonl(path: str):
-    print(path)
     with open(path, "r", encoding='utf-8') as fh:
         return [json.loads(line) for line in fh.readlines() if line]
     
@@ -42,7 +41,7 @@ class JupyterNotebookKernel(object):
 
     lock = RLock()
 
-    def __init__(self, retries=10, delay=5):
+    def __init__(self, retries=5, delay=5):
         JupyterNotebookKernel.lock.acquire()
         for _ in range(retries):
             try:
@@ -131,7 +130,6 @@ class JupyterNotebookKernel(object):
         error_monitor_thread.start()
 
 
-
 class API:
 
     def __init__(self, port='8001', ip='10.119.29.124'):
@@ -177,13 +175,15 @@ def code_generation(query):
     jupyter = JupyterNotebookKernel()
     jupyter.start_monitoring()
 
+
     parameters=dict(
-        do_sample=False,
+        do_sample=True,
         max_new_tokens=512,
         stop_sequences=['<|endofmessage|>', '<|endofblock|>'], 
         truncate=3072,
         details=True, 
-        decoder_input_details=True
+        decoder_input_details=True,
+        temperature=1
     )
     code = ''
     for _ in range(16):
@@ -238,37 +238,46 @@ if __name__ == '__main__':
     }
     parser = ArgumentParser(description="A simple argument parser")
     parser.add_argument("ch", type=str, help="checkpoint_number")
+    parser.add_argument("--index", type=str, help="u_number")
 
     args = parser.parse_args()
     print(args.ch)
 
     ip = {
-        "0": "",
-        "1": "",
-        "2": "",
+        "0": {
+            "0": "",
+            "1": "",
+            "2": "10.119.25.48",
+            "3": "10.119.25.124",
+        },
+        "1": {
+            "0": "",
+            "1": "",
+            "2": "10.119.25.47",
+            "3": "10.119.25.125",
+        },
+        "2": {
+            "0": "",
+            "1": "",
+            "2": "10.119.25.49",
+            "3": "10.119.25.123",
+        },
         "3": "",
         "4": "",
         "5": "",
         "6": "",
         "7": "",
         "8": "",
-        "9": "",
-        "10": "10.119.27.113",
-        "11": "10.119.27.197",
-        "12": "10.119.28.93",
-        "13": "10.119.28.201",
-        "14": "10.119.29.65",
-        "15": "10.119.29.146",
-        "16": "10.119.29.146",
-        "17": "10.119.19.26",
-        "18": "10.119.20.12",
-        "19": "10.119.21.48"
+        "9": ""
     }
     
-    api = API(port="8001", ip=ip[args.ch])
+    api = API(port="8001", ip=ip[args.ch][args.index])
+    dir = f"Llama2-70b-ape-gsm8k-resume-142315-2023-10-02-23:00/vote" + args.ch
 
-    input_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_to_be_run/{args.ch}.jsonl'
-    output_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/{args.ch}_result.jsonl'
+    name = args.index
+
+    input_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_to_be_run/{name}.jsonl'
+    output_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/multi_run_results/{dir}/{name}_result.jsonl'
 
     # output_path = f'/mnt/cache/wangke/code_generation/outs/debug/{name}/{name}_test_result.jsonl'
     if not os.path.exists("/".join(output_path.split("/")[:-1])):
@@ -289,7 +298,7 @@ if __name__ == '__main__':
 
     counter = BEGIN
     while counter < END:
-        pool = Pool(8)
+        pool = Pool(16)
         try:
             results = pool.imap(process_full, humaneval[BEGIN:END])
             for d in tqdm(results, total=len(humaneval[BEGIN:END])):
@@ -305,14 +314,14 @@ if __name__ == '__main__':
                     outs = []
                     BEGIN = counter
         except Exception as e:
-
             print(f'<|{str(e)}|>')
             pool.terminate()  # 立即终止所有子进程
-            print("[restarting]")
+            print(f"[restarting]")
             os.execl(sys.executable, sys.executable, *sys.argv)
-
-
-            pool.terminate()  # 立即终止所有子进程
+            
+            
+            if str(e) == "Kernel didn't respond in 60 seconds" or str(e) == "Kernel died before replying to kernel_info": # restart the program
+                os.execl(sys.executable, sys.executable, *sys.argv)
             continue  # 重新开始while循环
         finally:
             pool.close()  # 关闭pool，防止新的任务提交到pool

@@ -3,6 +3,7 @@ import os
 import re
 from latex2sympy2 import latex2sympy
 from tqdm import tqdm
+from collections import defaultdict
 
 def save_jsonl(datas, file_name):
     with open(file_name, "w", encoding="utf-8") as f:
@@ -244,7 +245,7 @@ def is_equal(asw:str, gt_asw:str) -> bool:
             return False
 
 
-def compute_accuracy(in_file, out_path, orig_file):
+def compute_accuracy_voting(in_files, out_path, orig_file):
     """
     compute accuracy for MATH like datasets
     with answers that are not all numbers
@@ -309,36 +310,158 @@ def is_number(s):
         return False
 
 
-def convert_to_train(in_files, out_file):
+def compute_accuracy_ours(in_files):
     """
     compute accuracy when the answer is put in the last block and thus in completion
     """
-    new_datas = []
-    wrong_datas = []
+    datas = []
     for in_file in in_files:
-        datas= load_json(in_file)
-        for data in tqdm(datas):
-            if is_equal(data["completion"], data["extra"]["answer"]):
-                extra = data["extra"]
-                system = {"role":"system", "content":[{"type":"text", "content":data["debug_result"][0]["content"]}]}
-                user = {"role":"user", "content":[{"type":"text", "content":data["debug_result"][1]["content"]}]}
-                assistant_content = []
-                for e in data["debug_result"][2:]:
-                    assistant_content.append({"type":e["role"], "content":e["content"]})
-                assistant = {"role":"assistant", "content":assistant_content}
-                new_datas.append({"messages":[system, user, assistant], "extra":extra})
+        with open(in_file, "r", encoding="utf-8") as f:
+            datas.append([json.loads(line) for line in f])
+            
+    correct_num = 0
+    wrong_num = 0
+            
+    for question_idx in tqdm(range(len(datas[0]))):
+        gt_answer = datas[0][question_idx]["extra"]["answer"]
+        inference_datas = [data[question_idx] for data in datas]
+        answers_cnt = dict()
+        for idx, inference_data in enumerate(inference_datas):
+            if idx == 0:
+                answers_cnt[inference_data["completion"]] = 1
             else:
-                wrong_datas.append(data)
+                found = False
+                for answer in answers_cnt.keys():
+                    if is_equal(inference_data["completion"], answer):
+                        answers_cnt[answer] += 1
+                        found = True
+                        break
+                if not found:
+                    answers_cnt[inference_data["completion"]] = 1
+                
+        model_answer = max(answers_cnt, key=answers_cnt.get)
+        
+        if is_equal(model_answer, gt_answer):
+            correct_num += 1
+        else:
+            wrong_num += 1
 
-    save_jsonl(new_datas, "/".join(out_file.split("/")[:-1]) + "/train_correct_" + out_file.split("/")[-1])
-    save_jsonl(wrong_datas, "/".join(out_file.split("/")[:-1]) + "/train_wrong_" + out_file.split("/")[-1])
-    print(f"ok: {len(new_datas)}")
-    print(f"wrong: {len(wrong_datas)}")
-    print(f"acc: {100 * len(new_datas) / (len(new_datas) + len(wrong_datas))}")
+    print(f"correct_num: {correct_num}")
+    print(f"wrong_num: {wrong_num}")
+    print(f"acc: {100 * correct_num / (correct_num + wrong_num)}")
+
+
+def compute_precision_ours(in_files):
+    """
+    compute accuracy when the answer is put in the last block and thus in completion
+    """
+    datas = []
+    for in_file in in_files:
+        with open(in_file, "r", encoding="utf-8") as f:
+            datas.append([json.loads(line) for line in f])
+            
+    correct_num = 0
+    wrong_num = 0
+    no_ans_num = 0
+            
+    for question_idx in tqdm(range(len(datas[0]))):
+        gt_answer = datas[0][question_idx]["extra"]["answer"]
+        inference_datas = [data[question_idx] for data in datas]
+        answers_cnt = dict()
+        for idx, inference_data in enumerate(inference_datas):
+            if idx == 0:
+                answers_cnt[inference_data["completion"]] = 1
+            else:
+                found = False
+                for answer in answers_cnt.keys():
+                    if is_equal(inference_data["completion"], answer):
+                        answers_cnt[answer] += 1
+                        found = True
+                        break
+                if not found:
+                    answers_cnt[inference_data["completion"]] = 1
+                
+        model_answer = max(answers_cnt, key=answers_cnt.get)
+        
+        if answers_cnt[model_answer] >= len(datas) - 3:
+            if is_equal(model_answer, gt_answer):
+                correct_num += 1
+            else:
+                wrong_num += 1
+        else:
+            no_ans_num += 1
+
+    print(f"correct_num: {correct_num}")
+    print(f"wrong_num: {wrong_num}")
+    print(f"no_ans_num: {no_ans_num}")
+    print(f"precision: {100 * correct_num / (correct_num + wrong_num)}")
+    print(f"recall: {100 * correct_num / (correct_num + wrong_num + no_ans_num)}")
     
+def vote_and_convert(out_file, n=10000):
+    total_correct = 0
+    out_datas = []
+    for shard_id in range(3):
+        print(f"shard_id: {shard_id}")
+        correct_num = 0
+        no_ans_num = 0
+        file_names = [f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/wk_data/run_results_{i}/{shard_id}_result.jsonl" for i in range(4)]
+        datas = [load_json(file_name) for file_name in file_names]
+        for entry_idx in tqdm(range(n)):
+            inference_datas = [data[entry_idx] for data in datas if entry_idx < len(data)]
+            if len(inference_datas) == 0:
+                continue
+            answers_cnt = dict()
+            for idx, inference_data in enumerate(inference_datas):
+                if idx == 0:
+                    answers_cnt[inference_data["completion"]] = 1
+                else:
+                    found = False
+                    for answer in answers_cnt.keys():
+                        if is_equal(inference_data["completion"], answer):
+                            answers_cnt[answer] += 1
+                            found = True
+                            break
+                    if not found:
+                        answers_cnt[inference_data["completion"]] = 1
+                    
+            model_answer = max(answers_cnt, key=answers_cnt.get)
+            
+            if answers_cnt[model_answer] >= len(inference_datas):
+                correct_num += 1
+                out_datas.extend(inference_datas)
+            else:
+                no_ans_num += 1
 
+        total_correct += correct_num
+        
+        print(f"correct_num: {correct_num}")
+        print(f"no_ans_num: {no_ans_num}")
+        print(f"rate: {100 * correct_num / (correct_num + no_ans_num)}")
+        
+    new_datas = []
+    for data in out_datas:
+        system = {"role":"system", "content":[{"type":"text", "content":data["debug_result"][0]["content"]}]}
+        user = {"role":"user", "content":[{"type":"text", "content":data["debug_result"][1]["content"]}]}
+        assistant_content = []
+        for e in data["debug_result"][2:]:
+            assistant_content.append({"type":e["role"], "content":e["content"]})
+        assistant = {"role":"assistant", "content":assistant_content}
+        new_datas.append({"messages":[system, user, assistant]})
+        
+    print(f"total_num: {total_correct}")
+    save_jsonl(out_datas, out_file)
+            
+    
 if __name__ == "__main__":
-
-    in_files = [f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/{i}_result.jsonl" for i in range(20)]
-
-    convert_to_train(in_files, "/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/out.jsonl")
+    # vote_and_convert("/mnt/cache/luzimu/datasets_ch/ape210k/outs/wk_data/voted_out.jsonl", n=10000)
+    datas = load_json("/mnt/cache/luzimu/code_generation-master/data/train/voted_out_24550.jsonl")
+    new_datas = []
+    for data in datas:
+        system = {"role":"system", "content":[{"type":"text", "content":data["debug_result"][0]["content"]}]}
+        user = {"role":"user", "content":[{"type":"text", "content":data["debug_result"][1]["content"]}]}
+        assistant_content = []
+        for e in data["debug_result"][2:]:
+            assistant_content.append({"type":e["role"], "content":e["content"]})
+        assistant = {"role":"assistant", "content":assistant_content}
+        new_datas.append({"messages":[system, user, assistant]})
+    save_jsonl(new_datas, "/mnt/cache/luzimu/code_generation-master/data/train/train_voted_out_24550.jsonl")

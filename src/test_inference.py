@@ -243,7 +243,7 @@ if __name__ == '__main__':
     print(args.ch)
 
     ip = {
-        "0": "",
+        "0": "10.119.20.128",
         "1": "",
         "2": "",
         "3": "",
@@ -253,22 +253,22 @@ if __name__ == '__main__':
         "7": "",
         "8": "",
         "9": "",
-        "10": "10.119.27.113",
-        "11": "10.119.27.197",
-        "12": "10.119.28.93",
-        "13": "10.119.28.201",
-        "14": "10.119.29.65",
-        "15": "10.119.29.146",
-        "16": "10.119.29.146",
-        "17": "10.119.19.26",
-        "18": "10.119.20.12",
-        "19": "10.119.21.48"
+        "10": "",
+        "11": "",
+        "12": "",
+        "13": "",
+        "14": "",
+        "15": "",
+        "16": "",
+        "17": "",
+        "18": "",
+        "19": ""
     }
     
     api = API(port="8001", ip=ip[args.ch])
 
-    input_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_to_be_run/{args.ch}.jsonl'
-    output_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/{args.ch}_result.jsonl'
+    input_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_to_be_run/tmp.jsonl'
+    output_path = f'/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/tmp_result.jsonl'
 
     # output_path = f'/mnt/cache/wangke/code_generation/outs/debug/{name}/{name}_test_result.jsonl'
     if not os.path.exists("/".join(output_path.split("/")[:-1])):
@@ -329,6 +329,6 @@ if __name__ == '__main__':
     '''
 
 
-    save_jsonl(all, output_path, add_timestamp=True)
+    # save_jsonl(all, output_path, add_timestamp=True)
 
 

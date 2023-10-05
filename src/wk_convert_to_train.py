@@ -3,6 +3,7 @@ import os
 import re
 from latex2sympy2 import latex2sympy
 from tqdm import tqdm
+from argparse import ArgumentParser
 
 def save_jsonl(datas, file_name):
     with open(file_name, "w", encoding="utf-8") as f:
@@ -335,10 +336,27 @@ def convert_to_train(in_files, out_file):
     print(f"ok: {len(new_datas)}")
     print(f"wrong: {len(wrong_datas)}")
     print(f"acc: {100 * len(new_datas) / (len(new_datas) + len(wrong_datas))}")
+
+def count_num_combine(in_files, out_file):
+    """
+    compute accuracy when the answer is put in the last block and thus in completion
+    """
+    total_num = 0
+    new_datas = []
+    for in_file in in_files:
+        datas = load_json(in_file)
+        total_num += len(datas)
+        new_datas.extend(datas)
+
+    save_jsonl(new_datas, out_file)
+    print(total_num)
     
 
 if __name__ == "__main__":
+    parser = ArgumentParser("parser")
+    parser.add_argument("n", type=str)
+    args = parser.parse_args()
 
-    in_files = [f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/{i}_result.jsonl" for i in range(20)]
+    in_files = [f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/wk_data/run_results_{args.n}/{i}_result.jsonl" for i in range(3)]
 
-    convert_to_train(in_files, "/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/out.jsonl")
+    count_num_combine(in_files, f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/wk_data/run_results_{args.n}/out{args.n}.jsonl")

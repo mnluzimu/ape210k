@@ -309,16 +309,37 @@ def is_number(s):
         return False
 
 
-def convert_to_train(in_files, out_file):
+def convert_to_train(in_files_list, out_file):
     """
     compute accuracy when the answer is put in the last block and thus in completion
     """
     new_datas = []
-    wrong_datas = []
-    for in_file in in_files:
-        datas= load_json(in_file)
-        for data in tqdm(datas):
-            if is_equal(data["completion"], data["extra"]["answer"]):
+    total_num = 0
+    datas_list = []
+    for in_files in in_files_list:
+        max_len = 0
+        for in_file in in_files:
+            if os.path.exists(in_file) and os.path.isfile(in_file):
+                datas = load_json(in_file)
+                print(in_file, len(datas))
+                if len(datas) > max_len:
+                    max_len = len(datas)
+                datas_list.append(datas)
+
+        if len(datas_list) == 0:
+            continue
+
+        total_num += max_len
+        for idx in tqdm(range(max_len)):
+            # solutions = []
+            min_solution_len = 1000
+            data = None
+            for datas in datas_list:
+                if len(datas) > idx and is_equal(datas[idx]["completion"], datas[idx]["extra"]["answer"]):
+                    # solutions.append(datas[idx])
+                    if min_solution_len > len(datas[idx]["debug_result"]):
+                        data = datas[idx]
+            if data:
                 extra = data["extra"]
                 system = {"role":"system", "content":[{"type":"text", "content":data["debug_result"][0]["content"]}]}
                 user = {"role":"user", "content":[{"type":"text", "content":data["debug_result"][1]["content"]}]}
@@ -327,18 +348,17 @@ def convert_to_train(in_files, out_file):
                     assistant_content.append({"type":e["role"], "content":e["content"]})
                 assistant = {"role":"assistant", "content":assistant_content}
                 new_datas.append({"messages":[system, user, assistant], "extra":extra})
-            else:
-                wrong_datas.append(data)
+
 
     save_jsonl(new_datas, "/".join(out_file.split("/")[:-1]) + "/train_correct_" + out_file.split("/")[-1])
-    save_jsonl(wrong_datas, "/".join(out_file.split("/")[:-1]) + "/train_wrong_" + out_file.split("/")[-1])
+
     print(f"ok: {len(new_datas)}")
-    print(f"wrong: {len(wrong_datas)}")
-    print(f"acc: {100 * len(new_datas) / (len(new_datas) + len(wrong_datas))}")
+    print(f"acc: {len(new_datas) / total_num}")
+
     
 
 if __name__ == "__main__":
 
-    in_files = [f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/{i}_result.jsonl" for i in range(20)]
+    in_files_list = [[f"/mnt/cache/luzimu/datasets_ch/ape210k/outs/multi_run_results/Llama2-70b-ape-gsm8k-resume-142315-2023-10-02-23:00/vote{j}/{i}_result.jsonl" for j in range(3)] for i in range(20)]
 
-    convert_to_train(in_files, "/mnt/cache/luzimu/datasets_ch/ape210k/outs/train_run_results/out.jsonl")
+    convert_to_train(in_files_list, "/mnt/cache/luzimu/datasets_ch/ape210k/outs/multi_run_results/Llama2-70b-ape-gsm8k-resume-142315-2023-10-02-23:00/out.jsonl")
